@@ -22,11 +22,12 @@
     "atlas-cloud",
     "generative-ai"
   ],
-  "homepage": "https://github.com/Alisa0808/vox-director",
+  "homepage": "https://github.com/hollowwx/vox-director",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Alisa0808/vox-director.git"
+    "url": "https://github.com/hollowwx/vox-director.git"
   },
   "license": "MIT",
   "author": "Alisa0808"
 }
+
