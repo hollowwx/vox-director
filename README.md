@@ -70,18 +70,37 @@ Model IDs drift — the skill fetches the live list from `GET https://api.atlasc
 
 ## Install
 
-This is an **agent skill** — it works with any coding agent that can read a workflow and run scripts (Claude Code, Codex, …). Claude Code auto-discovers it as a skill; other agents read [`AGENTS.md`](AGENTS.md) → [`SKILL.md`](SKILL.md).
+This is an **agent skill** — it works with coding agents that can read a workflow and run scripts. Claude Code and Codex use different discovery directories, so install it for the agent you use.
 
-**Option A — from this repo:**
+**Codex — global install (recommended):**
 ```bash
-git clone https://github.com/Alisa0808/vox-director.git ~/.claude/skills/vox-director
+git clone https://github.com/hollowwx/vox-director.git ~/.agents/skills/vox-director
 ```
 
-**Option B — from the packaged skill:** download [`vox-director.skill`](vox-director.skill) and install it via your Claude skills UI.
+On Windows PowerShell:
+```powershell
+git clone https://github.com/hollowwx/vox-director.git "$HOME/.agents/skills/vox-director"
+```
+
+Restart Codex or open a new task after installation, then ask for a Vox-style
+video. When working inside this repository, Codex also discovers the project
+entry at [`.agents/skills/vox-director/SKILL.md`](.agents/skills/vox-director/SKILL.md).
+
+**Claude Code:**
+```bash
+git clone https://github.com/hollowwx/vox-director.git ~/.claude/skills/vox-director
+```
+
+The packaged [`vox-director.skill`](vox-director.skill) remains a Claude skill package. Codex should use the Git clone installation above so `scripts/`, `references/`, and `assets/` stay beside `SKILL.md`.
 
 Then set your Atlas Cloud API key (get one at [atlascloud.ai/console/api-keys](https://www.atlascloud.ai/console/api-keys?utm_source=github&utm_campaign=vox_director)):
 ```bash
 export ATLASCLOUD_API_KEY="sk-..."
+```
+
+On Windows PowerShell:
+```powershell
+$env:ATLASCLOUD_API_KEY = "sk-..."
 ```
 
 ## Quick start

@@ -70,18 +70,35 @@ https://github.com/user-attachments/assets/f69f072f-f50a-41ba-9e66-7ed0aae4ddc0
 
 ## 安装
 
-这是一个**通用 agent 技能**——任何能读工作流、跑脚本的编码 agent 都能用(Claude Code、Codex 等)。Claude Code 会自动把它识别成 skill;其他 agent 读 [`AGENTS.md`](AGENTS.md) → [`SKILL.md`](SKILL.md)。
+这是一个**通用 agent 技能**——任何能读工作流、跑脚本的编码 agent 都能用。Claude Code 和 Codex 的技能发现目录不同，请按你实际使用的 agent 安装。
 
-**方式 A —— 从本仓库:**
+**Codex——全局安装（推荐）：**
 ```bash
-git clone https://github.com/Alisa0808/vox-director.git ~/.claude/skills/vox-director
+git clone https://github.com/hollowwx/vox-director.git ~/.agents/skills/vox-director
 ```
 
-**方式 B —— 用打包好的技能文件:** 下载 [`vox-director.skill`](vox-director.skill),在你的 Claude 技能界面里安装。
+Windows PowerShell：
+```powershell
+git clone https://github.com/hollowwx/vox-director.git "$HOME/.agents/skills/vox-director"
+```
+
+安装后重启 Codex 或新建一个任务，再直接提出 Vox 风格视频需求。在本仓库内工作时，Codex 也会自动发现 [`.agents/skills/vox-director/SKILL.md`](.agents/skills/vox-director/SKILL.md) 项目入口。
+
+**Claude Code：**
+```bash
+git clone https://github.com/hollowwx/vox-director.git ~/.claude/skills/vox-director
+```
+
+打包文件 [`vox-director.skill`](vox-director.skill) 仍然是 Claude Skill 安装包。Codex 应使用上面的 Git clone 方式，确保 `SKILL.md` 和 `scripts/`、`references/`、`assets/` 保持在一起。
 
 然后设置 Atlas Cloud API key(在 [atlascloud.ai/console/api-keys](https://www.atlascloud.ai/console/api-keys?utm_source=github&utm_campaign=vox_director) 获取):
 ```bash
 export ATLASCLOUD_API_KEY="sk-..."
+```
+
+Windows PowerShell：
+```powershell
+$env:ATLASCLOUD_API_KEY = "sk-..."
 ```
 
 ## 快速开始

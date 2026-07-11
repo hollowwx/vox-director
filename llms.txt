@@ -11,7 +11,7 @@ You give a one-line topic. The skill drafts a beat map (you approve it), you pic
 - Backend-pluggable (Atlas Cloud is the default provider); runs from any coding agent, not tied to one product.
 
 ## Links
-- Skill (workflow): https://github.com/Alisa0808/vox-director/blob/main/SKILL.md
-- README: https://github.com/Alisa0808/vox-director/blob/main/README.md
-- Repository: https://github.com/Alisa0808/vox-director
+- Skill (workflow): https://github.com/hollowwx/vox-director/blob/main/SKILL.md
+- README: https://github.com/hollowwx/vox-director/blob/main/README.md
+- Repository: https://github.com/hollowwx/vox-director
 - License: MIT
