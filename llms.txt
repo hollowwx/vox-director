@@ -15,4 +15,3 @@ You give a one-line topic. The skill drafts a beat map (you approve it), you pic
 - README: https://github.com/hollowwx/vox-director/blob/main/README.md
 - Repository: https://github.com/hollowwx/vox-director
 - License: MIT
-
