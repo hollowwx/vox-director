@@ -25,5 +25,10 @@ any coding agent that can read instructions and run scripts can drive it.
 
 - **Claude Code** auto-loads this as a skill from `SKILL.md`'s frontmatter — just
   ask for a "vox video".
-- **Codex / other agents**: follow `SKILL.md` as your instructions; this
-  `AGENTS.md` is your entry point.
+- **Codex** discovers the repository entry at
+  `.agents/skills/vox-director/SKILL.md`; that entry routes back to the root
+  `SKILL.md`, which remains the workflow's single source of truth.
+- When installed globally, clone the whole repository to
+  `~/.agents/skills/vox-director` so Codex can discover the root `SKILL.md` and
+  its sibling `scripts/`, `references/`, and `assets/` directories together.
+
