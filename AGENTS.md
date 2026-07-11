@@ -31,4 +31,3 @@ any coding agent that can read instructions and run scripts can drive it.
 - When installed globally, clone the whole repository to
   `~/.agents/skills/vox-director` so Codex can discover the root `SKILL.md` and
   its sibling `scripts/`, `references/`, and `assets/` directories together.
-
