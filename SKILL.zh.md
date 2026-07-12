@@ -1,8 +1,9 @@
 ---
 name: vox-director
 description: >
-  把一个主题一句话变成成品的 Vox 纸片拼贴讲解/广告视频,全程 Atlas Cloud API + 本地 ffmpeg
-  ——脚本、拼贴关键帧、动效、旁白、配乐、字幕全自动。当用户想做「Vox 风格」视频、纸片/撕纸拼贴
+  把一个主题变成成品 Vox 纸片拼贴讲解/广告视频。默认走 Codex 原生流程：Codex ImageGen
+  生成关键帧、SuperGrok/Grok Imagine 交付动效、本地音频素材与 ffmpeg 合成；Atlas Cloud
+  保留为可选自动化备用路径。当用户想做「Vox 风格」视频、纸片/撕纸拼贴
   动画、「motion collage」、用 AI 生成的拼贴海报做旁白讲解或短广告、剪贴簿式致敬片,或想把一个
   主题/产品/人物变成有冲击力的旁白拼贴视频时使用——即使没说「Vox」也用。也用于复刻 Stav Zilber
   / rom1trs / Higgsfield 式拼贴广告工作流,或用户提到 拼贴动效视频 / 剪贴簿视频 / 拼贴广告 /
@@ -13,7 +14,8 @@ description: >
 # Vox Director(中文版)
 
 把一句话主题变成一条成品 **Vox 纸片拼贴视频**:大胆、有冲击力、带旁白的讲解/广告片,每一段都是
-一张会动的撕纸拼贴海报,配旁白、配乐、字幕。全程只需**一个 Atlas Cloud API key** + 本地 **ffmpeg**。
+一张会动的撕纸拼贴海报,配旁白、配乐、字幕。默认 Codex 路径只需本地 **ffmpeg**，不要求
+Atlas key；需要 provider 自动生成媒体时再选择 Atlas Cloud。
 
 风格 = Vox 讲解片和 Stav Zilber / rom1trs 带火的现代编辑感纸片拼贴:手撕纸边、胶带、半调网点、
 报纸剪报、每段一块大胆平涂色底、大号剪贴标题。
@@ -31,11 +33,18 @@ Vox 拼贴的**样子**和**动效**是两件事、两步:
 「真·Vox 拼贴」和「会动的 PPT」区分开的精确 prompt 结构。两个"库"文件:`prompt-guide.md`(画面/LOOK
 层:生图5段 + 生视频轴 + 词库 + 8 套主题预置)、`beat-layer.md`(故事/STORY 层:叙事弧库 + 运镜/素材运动)。
 
-## 前置检查(别跳过)
+## Codex 运行约定
 
-- `echo "${ATLASCLOUD_API_KEY:+set}"` —— 空的话让用户去 https://www.atlascloud.ai/console/api-keys 拿 key 设上,没设就停。
-- `command -v ffmpeg ffprobe` —— 合成必需(macOS:`brew install ffmpeg`)。
-- `python3 -c "import PIL"` —— Pillow,用来烧字幕/水印。
+所有命令都从技能根目录执行。Windows PowerShell 使用 `python`，macOS/Linux 通常使用
+`python3`。下文的 `<python>` 指当前环境实际可用的解释器。
+
+开始写脚本或生成素材前，先运行 `<python> scripts/doctor.py --json`。它只检查 Python、Pillow、
+ffmpeg、ffprobe 和 curl，不访问网络，也不会产生付费调用。先修复所有缺失的必需依赖。策划和
+离线验证阶段可以没有 Atlas key。
+
+只有使用备用 Atlas provider 时，才在第一次调用前运行
+`<python> scripts/doctor.py --require-api-key`。Codex ImageGen 和 SuperGrok 不需要 Atlas key。
+执行这两个阶段前先读 `references/codex-supergrok.md`。
 
 ## 标准流程(主题 → 成片)
 
@@ -54,17 +63,22 @@ Vox 拼贴的**样子**和**动效**是两件事、两步:
    贴主题(年代/文化/调性)的,**库里没有就现调一个**(混 prompt-guide 的 媒介/年代/配色/字体/质感)。
    **匹配主题、不匹配语言**(英文讲中国史照样该中式)。一个主题打包整个"看的层"
    (idiom+配色+字体+质感+情绪+运动)。跑 bake-off 让用户看图 pick——AI 出主意、库保底、人拍板。
-   把选中的名字写进 `"theme"`:
-   `python3 scripts/style_bakeoff.py out/<project> american-retro,swiss-modern,punk-zine,atomic-age`
+   先准备 Codex ImageGen 试片任务：`<python> scripts/codex_media.py prepare out/<project>
+   --stage bakeoff --styles american-retro,swiss-modern,punk-zine,atomic-age`。逐张生成、记录并展示，
+   用户选定后运行 `<python> scripts/codex_media.py select-style out/<project> --theme <pick>`。
 
-3. **关键帧(拼贴的样子)。** `python3 scripts/keyframes.py out/<project>`
-   用 **google/nano-banana-2/text-to-image** 给每段/每镜出一张拼贴海报,标题字烧进图。按
-   `references/prompt-guide.md` 的 5 段式写 prompt。**动画前先确认每张是真·分层拼贴**——这里重滚便宜
-   ($0.08),别拿弱图去付费动画。
+3. **Codex ImageGen 关键帧（默认）。** 运行
+   `<python> scripts/codex_media.py prepare out/<project> --stage keyframes`。对
+   `codex-media.json` 中每个 `pending` 任务调用内置 ImageGen，把选中的 PNG 复制到
+   `output_path`，检查后运行 `<python> scripts/codex_media.py record out/<project>
+   --stage keyframes --key <key> --output <path>`。除非用户明确要求 API fallback，否则不要调用
+   Image API CLI，也不要索取 `OPENAI_API_KEY`。
 
-4. **动效。** `python3 scripts/clips.py out/<project>`
-   用 **google/gemini-omni-flash/image-to-video** 动每张海报。两根独立轴(见 `beat-layer.md` §3,已在
-   我们自己栈上实测):
+4. **SuperGrok 交付包（默认）。** 运行
+   `<python> scripts/codex_media.py prepare out/<project> --stage supergrok`。不要打开 Grok，也不要
+   上传任何文件。按镜头 key 把每个任务的本地 `input_path` 参考图、完整 prompt 和时长交给用户；
+   可以显示图片时直接内嵌预览，并保留项目内原文件。图生视频由用户在 SuperGrok 中完成。
+   动效仍使用两根独立轴：
    • **`camera_move`** —— 每镜一个运镜。安全/默认:`{static, push_in, pull_out, pan, tilt, parallax}`。
      **大胆/实验**:`{orbit, dolly_zoom, roll, whip}` 是**可选、不是禁用**——它们可能掰弯平面,所以配
      `constraints: loose` 用、并**抽卡**重滚,留给值得的那一拍。自定义短语也能穿透。
@@ -73,14 +87,16 @@ Vox 拼贴的**样子**和**动效**是两件事、两步:
      (每帧都飞就俗套)。
    `motion_style` = 幅度 `calm | punchy | max`(主题给默认)。**`constraints`** = `strict`(默认:开防缺陷
    护栏——平面2D/单向/不 morph,适合重文字讲解片)或 `loose`(放开让模型探索 3D/大胆运镜,抽卡重滚)。
-   **只有带标题的镜头才硬锁文字**(无标题的特写镜随便浪)。**真人 / 品牌 logo**:Omni 和 Seedance 会拒——设
-   `"video_model": "kwaivgi/kling-video-o3-pro/image-to-video"`。
+   **只有带标题的镜头才硬锁文字**(无标题的特写镜随便浪)。
 
-5. **旁白 + 配乐。** `python3 scripts/audio.py out/<project>`
-   用 **xai/tts-v1** 出单一音色旁白(多语言,`voice_id`)+ 用 **minimax/music-2.6** 出器乐 BGM。
-   (普通旁白**别用 seed-audio**,除非指定 speaker——见踩坑。)
+   **Atlas 备用路径：** 只有用户明确选择 Atlas 并配置 `ATLASCLOUD_API_KEY` 时，才运行
+   `<python> scripts/keyframes.py out/<project>` 和 `<python> scripts/clips.py out/<project>`。
 
-6. **合成。** `python3 scripts/assemble.py out/<project>`
+5. **旁白 + 配乐。** Codex 原生路径接收本地素材：每个 beat 用 `narration_audio` 指向旁白文件，
+   项目用 `bgm_path` 指向背景音乐。可以协助用户准备或导入素材，但不能擅自选择云服务或索取 API key。
+   只有用户明确选择 Atlas 时，才运行 `<python> scripts/audio.py out/<project>` 生成旁白和配乐。
+
+6. **合成。** `<python> scripts/assemble.py out/<project>`
    ffmpeg:归一化 + 拼接所有镜头,单一旁白压在配乐下(ducking),按段烧字幕,加水印。
    产物 `out/<project>/final.mp4`。
 
@@ -104,7 +120,7 @@ Vox 拼贴的**样子**和**动效**是两件事、两步:
   "project": "my-film", "topic": "...", "language": "en",
   "aspect": "9:16",                       // 16:9 | 9:16 | 1:1 | 3:4
   "style": "collage",
-  "provider": "atlas_cloud",              // 媒体后端——默认;可插拔(scripts/provider.py)
+  "provider": "codex",                    // codex | atlas_cloud
   "theme": "american-retro",              // 主题预置(styles.THEME_PRESETS)——"看的层"
   "arc": "timeline",                      // 叙事弧(beat-layer.md)——"故事骨架"
   "video_model": "google/gemini-omni-flash/image-to-video",  // 真人用 Kling
@@ -113,7 +129,7 @@ Vox 拼贴的**样子**和**动效**是两件事、两步:
   "voice": {"voice_id": "leo", "language": "en", "speed": 1.0},
   "music": "epic cinematic orchestral, instrumental, no vocals",
   "mix": {"music": 0.6, "voice": 1.25},   // 音量平衡(可选;这是默认值,音乐在人声下自动让路)
-  "watermark": "Made with Atlas Cloud",
+  "watermark": "vox-director",
   "beats": [
     {
       "id": 1, "title_cn": "", "title_en": "BEFORE MONEY",
@@ -152,9 +168,9 @@ Vox 拼贴的**样子**和**动效**是两件事、两步:
 完整选型理由 + 每个 API/ffmpeg 坑(auth 头、curl 下载、无 libass 烧字幕、内容审核等)见
 `references/models-and-gotchas.md`。**排查任何失败前先读它**——大多数坑已记录。
 
-**后端可插拔。** 所有 API 调用都走一个 **provider**(`scripts/provider.py`);Atlas Cloud 是默认、
-目前唯一的后端。在 beats.json 里设 `"provider"` 就能切到别的后端(以后加了才有)——各阶段脚本不用改。
-`provider.py` 的 `run_jobs()` 还做了提交/轮询,并在任务**卡死或失败时自动重提**。
+**媒体路径必须显式选择。** `"provider": "codex"` 使用 `scripts/codex_media.py` 生成可恢复的
+ImageGen 与 SuperGrok 任务清单；`"provider": "atlas_cloud"` 使用原有 provider 脚本自动提交、
+轮询和下载，并要求 `ATLASCLOUD_API_KEY`。不能静默切换路径或产生费用。
 
 ## 高阶:元素级 motion collage
 
@@ -167,6 +183,6 @@ zoom+shake+whip,逐帧渲染)。零件飞回它们在海报里的**原位**、�
 
 ## 两个版本
 
-- **自动版**(本 skill):主题进,成片出,全程 Atlas。
-- **手动 prompt 包**:用户不在 Atlas 上时,只产出分镜表 + 每段生图 prompt + 每镜运动 prompt + 旁白脚本,
-  贴到任意生成器。创作引擎(那些 prompt)完全一样。
+- **Codex 原生版（默认）：** ImageGen 关键帧、SuperGrok 交付、本地音频和 ffmpeg 合成，不需要 Atlas key。
+- **Atlas 自动版（可选）：** 用户明确选择并提供 key 后，自动生成关键帧、视频、旁白和配乐。
+- **Prompt 包：** 输出分镜、生图、运动和旁白提示词，交给任意外部生成器。

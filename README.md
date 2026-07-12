@@ -4,9 +4,9 @@
 
 **Turn one topic into a finished Vox-style paper-collage explainer / ad video — script, collage keyframes, motion, voice-over, music and captions, all automated.**
 
-An **agent skill** that runs end to end on the [Atlas Cloud](https://www.atlascloud.ai/?utm_source=github&utm_campaign=vox_director) API + local `ffmpeg`, usable by any coding agent (Claude Code, Codex, etc.). You give it a one-line topic; it gives you an `mp4`.
+This fork is **Codex-native**: Codex ImageGen creates the collage keyframes, a resumable handoff pack sends motion prompts and local reference images to SuperGrok/Grok Imagine, and local `ffmpeg` assembles the film. Atlas Cloud remains available as an optional automated provider route.
 
-![License: MIT](https://img.shields.io/badge/License-MIT-black.svg) ![Powered by Atlas Cloud](https://img.shields.io/badge/powered%20by-Atlas%20Cloud-ff5a1f.svg) ![Agent Skill](https://img.shields.io/badge/Agent-Skill-d97757.svg)
+![License: MIT](https://img.shields.io/badge/License-MIT-black.svg) ![Codex Native](https://img.shields.io/badge/Codex-native-111827.svg) ![Atlas Optional](https://img.shields.io/badge/Atlas-optional-ff5a1f.svg) ![Agent Skill](https://img.shields.io/badge/Agent-Skill-d97757.svg)
 
 https://github.com/user-attachments/assets/561788b1-5615-4828-b3f8-b24ae5ad7bcd
 
@@ -40,10 +40,10 @@ One topic flows through one script per stage, all driven by a single `beats.json
 topic
   │
   ├─ 1. beat map        pick a narrative arc → write beats.json      ◀── GATE 1: you approve the beat map
-  ├─ 2. style bake-off  render the same beat in 3–4 themes           ◀── GATE 2: you pick the look by eye
-  ├─ 3. keyframes       one collage poster per beat  (nano-banana-2)
-  ├─ 4. motion          animate each poster          (gemini-omni-flash i2v)
-  ├─ 5. voice + music   one narrator (xai/tts) + BGM (minimax/music)
+  ├─ 2. style bake-off  Codex ImageGen renders 3–4 themes            ◀── GATE 2: you pick the look by eye
+  ├─ 3. keyframes       Codex ImageGen creates each collage poster
+  ├─ 4. motion          SuperGrok/Grok Imagine handoff per shot
+  ├─ 5. voice + music   import local assets (or use Atlas optionally)
   ├─ 6. assemble        ffmpeg: concat, duck music under VO, burn captions + watermark
   └─ final.mp4
 ```
@@ -55,7 +55,19 @@ Two ideas make or break the result, and the skill is built around both:
 
 Two human decision gates keep you in control (approve the beat map; pick the style); everything else is automated.
 
-## Models (verified on Atlas Cloud)
+## Media routes
+
+| Stage | Codex-native default | Optional Atlas automation |
+|---|---|---|
+| Style bake-off | Codex ImageGen | Nano Banana 2 |
+| Keyframes | Codex ImageGen | Nano Banana 2 |
+| Motion | SuperGrok/Grok Imagine handoff | Gemini Omni Flash or Kling |
+| Voice + music | Local user-supplied assets | xAI TTS + MiniMax Music |
+| Assembly | Local ffmpeg | Local ffmpeg |
+
+The Codex route never asks for `OPENAI_API_KEY`; Codex calls its built-in ImageGen tool. The SuperGrok stage creates a handoff pack and never opens a browser or uploads files without a separate user request.
+
+### Atlas models
 
 | Job | Model |
 |---|---|
@@ -70,18 +82,37 @@ Model IDs drift — the skill fetches the live list from `GET https://api.atlasc
 
 ## Install
 
-This is an **agent skill** — it works with any coding agent that can read a workflow and run scripts (Claude Code, Codex, …). Claude Code auto-discovers it as a skill; other agents read [`AGENTS.md`](AGENTS.md) → [`SKILL.md`](SKILL.md).
+This is an **agent skill** — it works with coding agents that can read a workflow and run scripts. Claude Code and Codex use different discovery directories, so install it for the agent you use.
 
-**Option A — from this repo:**
+**Codex — global install (recommended):**
 ```bash
-git clone https://github.com/Alisa0808/vox-director.git ~/.claude/skills/vox-director
+git clone https://github.com/hollowwx/vox-director.git ~/.codex/skills/vox-director
 ```
 
-**Option B — from the packaged skill:** download [`vox-director.skill`](vox-director.skill) and install it via your Claude skills UI.
+On Windows PowerShell:
+```powershell
+git clone https://github.com/hollowwx/vox-director.git "$HOME/.codex/skills/vox-director"
+```
 
-Then set your Atlas Cloud API key (get one at [atlascloud.ai/console/api-keys](https://www.atlascloud.ai/console/api-keys?utm_source=github&utm_campaign=vox_director)):
+Restart Codex or open a new task after installation, then ask for a Vox-style
+video. When working inside this repository, Codex also discovers the project
+entry at [`.agents/skills/vox-director/SKILL.md`](.agents/skills/vox-director/SKILL.md).
+
+**Claude Code:**
+```bash
+git clone https://github.com/hollowwx/vox-director.git ~/.claude/skills/vox-director
+```
+
+The cross-agent `~/.agents/skills/vox-director` path also works in environments that scan it. The packaged [`vox-director.skill`](vox-director.skill) remains a Claude skill package. Codex should clone the repository so `scripts/`, `references/`, and `assets/` stay beside `SKILL.md`.
+
+No API key is required for the Codex-native keyframe and SuperGrok handoff route. Only when you explicitly choose Atlas automation, set an Atlas Cloud API key:
 ```bash
 export ATLASCLOUD_API_KEY="sk-..."
+```
+
+On Windows PowerShell:
+```powershell
+$env:ATLASCLOUD_API_KEY = "sk-..."
 ```
 
 ## Quick start
@@ -90,14 +121,16 @@ Just ask your coding agent, with the skill installed:
 
 > *"Make me a Vox-style collage video introducing Mexican street food — English, 16:9, 15 seconds."*
 
-The agent will draft a beat map for your approval, run a style bake-off for you to pick from, then generate keyframes → motion → voice → music and assemble `out/<project>/final.mp4`.
+Codex runs `scripts/doctor.py`, drafts the beat map for approval, prepares an ImageGen style bake-off, generates keyframes, builds the SuperGrok handoff pack, and assembles returned clips plus local audio into `out/<project>/final.mp4`.
 
 ## Requirements
 
-- A **coding agent** — Claude Code, Codex, or similar
-- **Atlas Cloud** API key
+- **Codex** (recommended) or another coding agent that reads `SKILL.md`
 - **ffmpeg** + **ffprobe** (`brew install ffmpeg`)
 - **Python 3** with **Pillow** (`pip install pillow`) — for caption/watermark overlays
+- **Atlas Cloud API key + curl** only for the optional Atlas route
+
+For pinned toolchains, set trusted absolute paths with `VOX_FFMPEG`, `VOX_FFPROBE`, or `VOX_CURL`.
 
 ## What's in the box
 
@@ -105,7 +138,10 @@ The agent will draft a beat map for your approval, run a style bake-off for you 
 SKILL.md              the skill (English) — the workflow the agent follows
 SKILL.zh.md           the same skill in Chinese
 AGENTS.md             entry point for non-Claude agents (Codex, …)
+agents/openai.yaml     Codex UI metadata
+.agents/skills/        project-scoped Codex discovery entry
 references/           the creative engine
+  codex-supergrok.md    Codex ImageGen + SuperGrok handoff contract
   prompt-guide.md       the LOOK layer — prompt structures, vocab & 8 theme presets
   beat-layer.md         14 narrative arcs + hook/pacing + shot patterns
   models-and-gotchas.md every API / ffmpeg gotcha, already solved
@@ -119,7 +155,7 @@ assets/               the showcase film
 
 Inspired by the collage-ad workflows of **[Stav Zilber](https://x.com/StavZilber)**, **[rom1trs](https://x.com/rom1trs)** and **[Higgsfield](https://x.com/higgsfield_ai)**, and by **[Vox](https://www.vox.com)**'s explainer visual language.
 
-Built end to end on **[Atlas Cloud](https://www.atlascloud.ai/?utm_source=github&utm_campaign=vox_director)** — one prompt, one film.
+The original automated provider route was built on **[Atlas Cloud](https://www.atlascloud.ai/?utm_source=github&utm_campaign=vox_director)**. This fork adds the Codex-native route while preserving that fallback.
 
 ## License
 

@@ -2,10 +2,11 @@
 """
 Provider abstraction — the pluggable media backend the pipeline stages talk to.
 
-Atlas Cloud is the default and, for now, the only backend. Stages call a Provider
+Atlas Cloud is the only automated API backend in this legacy provider layer. Atlas stages call a Provider
 (submit_image/video/audio, remove_bg, get_status, upload, download) instead of a
 concrete client, so adding a backend is: subclass Provider + one registry entry.
-Pick a backend per project with beats.json `{"provider": "atlas_cloud"}` (default).
+Pick it explicitly with beats.json `{"provider": "atlas_cloud"}`. The Codex-native
+ImageGen and SuperGrok stages use `codex_media.py` instead of this API layer.
 
 The layer is a thin in-process wrapper — zero extra network hops, so it does NOT
 slow the pipeline; the only cost is the API latency, which is unchanged.

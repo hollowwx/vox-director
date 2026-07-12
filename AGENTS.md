@@ -12,18 +12,25 @@ any coding agent that can read instructions and run scripts can drive it.
 2. Before writing any prompt, read **`references/`** (prompt structures, the
    vocabulary/theme bank, and the narrative-beat library).
 3. Work one project at a time under `out/<project>/`, driven by a single
-   `beats.json`. Run the stages in **`scripts/`** in order:
-   `style_bakeoff.py → keyframes.py → clips.py → audio.py → assemble.py`.
+   `beats.json`. For the Codex-native route, run `scripts/doctor.py`, then use
+   `scripts/codex_media.py` for the style bake-off, keyframes, and SuperGrok
+   handoff. Use `scripts/assemble.py` after local narration and music assets are
+   ready. The Atlas scripts remain an optional fully automated provider route.
 
 ## Requirements
 
-- `ATLASCLOUD_API_KEY` in the environment — https://www.atlascloud.ai/console/api-keys
 - `ffmpeg` + `ffprobe`
 - Python 3 with `pillow`
+- `ATLASCLOUD_API_KEY` and `curl` only when the Atlas fallback is selected
 
 ## Agent notes
 
 - **Claude Code** auto-loads this as a skill from `SKILL.md`'s frontmatter — just
   ask for a "vox video".
-- **Codex / other agents**: follow `SKILL.md` as your instructions; this
-  `AGENTS.md` is your entry point.
+- **Codex** discovers the repository entry at
+  `.agents/skills/vox-director/SKILL.md`; that entry routes back to the root
+  `SKILL.md`, which remains the workflow's single source of truth.
+- When installed globally, clone the whole repository to
+  `~/.codex/skills/vox-director` (recommended) or
+  `~/.agents/skills/vox-director` so Codex can discover the root `SKILL.md` and
+  its sibling `scripts/`, `references/`, and `assets/` directories together.

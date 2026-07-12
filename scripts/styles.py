@@ -56,7 +56,7 @@ TITLE_TREATMENT = (
 
 # ---- Paper-collage STYLE LIBRARY (pick per topic; hybrid selection) --------------
 # Shared collage MECHANICS (same for every style) — only the visual IDIOM changes.
-# The library is a palette + quality floor, NOT a fixed menu: Claude reads the topic,
+# The library is a palette + quality floor, NOT a fixed menu: the agent reads the topic,
 # picks the 3-4 idioms that fit its era/culture/tone (or composes a custom one), runs a
 # bake-off, and the human picks. Match the idiom to the TOPIC, not the language — an English
 # film about Chinese history should still look Chinese (that's fine). The goal is the right
@@ -100,7 +100,7 @@ DEFAULT_STYLE = "american-retro"
 
 # THEME PRESETS = full "look" bundles (theme-layer). A preset fixes the LOOK dims (idiom +
 # palette + type + finish + mood + default motion energy); scene/camera/element-motion stay
-# per-beat (beat-layer); Vox constraints + text/flat locks are universal. Extensible: Claude may
+# per-beat (beat-layer); Vox constraints + text/flat locks are universal. Extensible: Codex may
 # compose a custom theme by mixing prompt-guide.md dimensions when a topic needs one the library lacks.
 THEME_PRESETS = {
     "american-retro": {"idiom": "american-retro", "palette": "bold retro primaries — red, mustard, teal, cream",

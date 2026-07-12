@@ -21,6 +21,9 @@ import subprocess
 import time
 import urllib.request
 import urllib.error
+import urllib.parse
+
+from codex_runtime import resolve_executable
 
 MEDIA_BASE = "https://api.atlascloud.ai/api/v1"
 LLM_BASE = "https://api.atlascloud.ai/v1"
@@ -128,9 +131,10 @@ def video(model: str, prompt: str, **params) -> str:
 def upload(file_path: str) -> str:
     """Upload a local file, return its public URL. Uses curl (multipart)."""
     out = subprocess.run(
-        ["/usr/bin/curl", "-s", "-X", "POST", f"{MEDIA_BASE}/model/uploadMedia",
-         "-H", f"Authorization: Bearer {_key()}", "-H", f"User-Agent: {UA}",
+        [resolve_executable("curl"), "-s", "-X", "POST", f"{MEDIA_BASE}/model/uploadMedia",
+         "-H", "@-",
          "-F", f"file=@{file_path}"],
+        input=f"Authorization: Bearer {_key()}\nUser-Agent: {UA}\n",
         capture_output=True, text=True, check=True).stdout
     data = json.loads(out).get("data", {})
     url = data.get("download_url") or data.get("url")
@@ -141,7 +145,14 @@ def upload(file_path: str) -> str:
 
 def download(url: str, dest: str) -> str:
     """Proxy-safe download via curl (urllib breaks on the OSS host)."""
-    subprocess.run(["/usr/bin/curl", "-s", "--retry", "3", "-o", dest, url], check=True)
+    parsed = urllib.parse.urlparse(url)
+    if parsed.scheme.lower() != "https" or not parsed.netloc:
+        raise AtlasCloudError(f"Download URL must be HTTPS: {url[:120]}")
+    subprocess.run(
+        [resolve_executable("curl"), "-s", "--retry", "3", "--proto", "=https",
+         "--proto-redir", "=https", "-o", dest, "--", url],
+        check=True,
+    )
     if not os.path.exists(dest) or os.path.getsize(dest) == 0:
         raise AtlasCloudError(f"download produced empty file: {url}")
     return dest

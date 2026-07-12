@@ -15,18 +15,19 @@ import subprocess
 import sys
 
 import text_overlay
+from codex_runtime import resolve_executable
 
 FPS, TAIL = 24, 0.5
-WATERMARK = "Made with Atlas Cloud · vox-director"
+WATERMARK = "vox-director"
 RES = {"16:9": (1920, 1080), "9:16": (1080, 1920), "1:1": (1080, 1080)}
 
 
 def ff(args):
-    subprocess.run(["ffmpeg", "-y", "-loglevel", "error", *args], check=True)
+    subprocess.run([resolve_executable("ffmpeg"), "-y", "-loglevel", "error", *args], check=True)
 
 
 def probe_dur(path):
-    out = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration",
+    out = subprocess.run([resolve_executable("ffprobe"), "-v", "error", "-show_entries", "format=duration",
                           "-of", "csv=p=0", path], capture_output=True, text=True).stdout
     try:
         return float(out.strip())
