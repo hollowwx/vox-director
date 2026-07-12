@@ -4,9 +4,9 @@
 
 **一个选题进,一条成片出——脚本、拼贴关键帧、动效、旁白、配乐、字幕,全流程自动化的 Vox 风格拼贴讲解/广告视频。**
 
-一个**通用 agent 技能**,后端全跑 [Atlas Cloud](https://www.atlascloud.ai/?utm_source=github&utm_campaign=vox_director) API、本地用 `ffmpeg` 合成,任何编码 agent(Claude Code、Codex 等)都能用。你给一句话选题,它给你一个 `mp4`。
+这个 fork 已改成 **Codex 原生工作流**：Codex ImageGen 生成拼贴关键帧，SuperGrok/Grok Imagine 交付包负责图生视频，本地 `ffmpeg` 完成合成。Atlas Cloud 保留为可选的自动化 provider。
 
-![License: MIT](https://img.shields.io/badge/License-MIT-black.svg) ![Powered by Atlas Cloud](https://img.shields.io/badge/powered%20by-Atlas%20Cloud-ff5a1f.svg) ![Agent Skill](https://img.shields.io/badge/Agent-Skill-d97757.svg)
+![License: MIT](https://img.shields.io/badge/License-MIT-black.svg) ![Codex Native](https://img.shields.io/badge/Codex-native-111827.svg) ![Atlas Optional](https://img.shields.io/badge/Atlas-optional-ff5a1f.svg) ![Agent Skill](https://img.shields.io/badge/Agent-Skill-d97757.svg)
 
 https://github.com/user-attachments/assets/561788b1-5615-4828-b3f8-b24ae5ad7bcd
 
@@ -40,10 +40,10 @@ https://github.com/user-attachments/assets/f69f072f-f50a-41ba-9e66-7ed0aae4ddc0
 选题
   │
   ├─ 1. 分镜脚本   选叙事弧线 → 写 beats.json          ◀── 决策点 1:你确认分镜脚本
-  ├─ 2. 风格试片   同一拍渲成 3–4 种主题               ◀── 决策点 2:你看图挑风格
-  ├─ 3. 关键帧     每拍一张拼贴海报   (nano-banana-2)
-  ├─ 4. 动效       让每张海报动起来   (gemini-omni-flash 图生视频)
-  ├─ 5. 旁白+配乐  统一旁白 (xai/tts) + 背景乐 (minimax/music)
+  ├─ 2. 风格试片   Codex ImageGen 渲染 3–4 种主题      ◀── 决策点 2:你看图挑风格
+  ├─ 3. 关键帧     Codex ImageGen 生成每张拼贴海报
+  ├─ 4. 动效       为 SuperGrok/Grok Imagine 生成交付包
+  ├─ 5. 旁白+配乐  导入本地素材（或明确选择 Atlas）
   ├─ 6. 合成       ffmpeg:拼接、配乐在旁白下自动闪避、烧字幕+水印
   └─ final.mp4
 ```
@@ -55,7 +55,19 @@ https://github.com/user-attachments/assets/f69f072f-f50a-41ba-9e66-7ed0aae4ddc0
 
 两个人工决策点让你始终掌控(确认分镜脚本、挑风格),其余全自动。
 
-## 模型(已在 Atlas Cloud 上验证)
+## 媒体路径
+
+| 阶段 | Codex 原生默认 | Atlas 自动化（可选） |
+|---|---|---|
+| 风格试片 | Codex ImageGen | Nano Banana 2 |
+| 关键帧 | Codex ImageGen | Nano Banana 2 |
+| 动效 | SuperGrok/Grok Imagine 交付 | Gemini Omni Flash 或 Kling |
+| 旁白与配乐 | 用户本地素材 | xAI TTS + MiniMax Music |
+| 合成 | 本地 ffmpeg | 本地 ffmpeg |
+
+Codex 路径不会索取 `OPENAI_API_KEY`，而是直接调用内置 ImageGen。SuperGrok 阶段只生成交付包；除非用户另行要求浏览器自动化，否则不会打开网页或上传文件。
+
+### Atlas 模型
 
 | 用途 | 模型 |
 |---|---|
@@ -74,12 +86,12 @@ https://github.com/user-attachments/assets/f69f072f-f50a-41ba-9e66-7ed0aae4ddc0
 
 **Codex——全局安装（推荐）：**
 ```bash
-git clone https://github.com/hollowwx/vox-director.git ~/.agents/skills/vox-director
+git clone https://github.com/hollowwx/vox-director.git ~/.codex/skills/vox-director
 ```
 
 Windows PowerShell：
 ```powershell
-git clone https://github.com/hollowwx/vox-director.git "$HOME/.agents/skills/vox-director"
+git clone https://github.com/hollowwx/vox-director.git "$HOME/.codex/skills/vox-director"
 ```
 
 安装后重启 Codex 或新建一个任务，再直接提出 Vox 风格视频需求。在本仓库内工作时，Codex 也会自动发现 [`.agents/skills/vox-director/SKILL.md`](.agents/skills/vox-director/SKILL.md) 项目入口。
@@ -89,9 +101,9 @@ git clone https://github.com/hollowwx/vox-director.git "$HOME/.agents/skills/vox
 git clone https://github.com/hollowwx/vox-director.git ~/.claude/skills/vox-director
 ```
 
-打包文件 [`vox-director.skill`](vox-director.skill) 仍然是 Claude Skill 安装包。Codex 应使用上面的 Git clone 方式，确保 `SKILL.md` 和 `scripts/`、`references/`、`assets/` 保持在一起。
+需要跨 Agent 共用时也可以安装到 `~/.agents/skills/vox-director`。打包文件 [`vox-director.skill`](vox-director.skill) 仍是 Claude Skill 安装包；Codex 应克隆完整仓库，确保 `SKILL.md` 与资源目录保持在一起。
 
-然后设置 Atlas Cloud API key(在 [atlascloud.ai/console/api-keys](https://www.atlascloud.ai/console/api-keys?utm_source=github&utm_campaign=vox_director) 获取):
+Codex 原生关键帧与 SuperGrok 交付路径不需要 API key。只有明确选择 Atlas 自动化时才设置：
 ```bash
 export ATLASCLOUD_API_KEY="sk-..."
 ```
@@ -107,14 +119,16 @@ $env:ATLASCLOUD_API_KEY = "sk-..."
 
 > *「做一条 Vox 风格的拼贴视频,介绍墨西哥街头美食——全英文,16:9,15 秒。」*
 
-agent 会先起草分镜脚本给你确认,再跑一轮风格试片让你挑,然后生成关键帧 → 动效 → 旁白 → 配乐,合成 `out/<项目>/final.mp4`。
+Codex 会先运行 `scripts/doctor.py`，再起草分镜、准备 ImageGen 风格试片、生成关键帧、制作 SuperGrok 交付包，并把返回的视频与本地音频合成为 `out/<项目>/final.mp4`。
 
 ## 环境要求
 
-- 一个**编码 agent**——Claude Code、Codex 或类似工具
-- **Atlas Cloud** API key
+- **Codex**（推荐）或其他能读取 `SKILL.md` 的编码 agent
 - **ffmpeg** + **ffprobe**(`brew install ffmpeg`)
 - **Python 3** + **Pillow**(`pip install pillow`)——用于字幕/水印叠加
+- 只有可选 Atlas 路径需要 **Atlas Cloud API key + curl**
+
+需要固定本地工具版本时，可用 `VOX_FFMPEG`、`VOX_FFPROBE`、`VOX_CURL` 设置可信绝对路径。
 
 ## 目录结构
 
@@ -122,7 +136,10 @@ agent 会先起草分镜脚本给你确认,再跑一轮风格试片让你挑,然
 SKILL.md              技能本体(英文)——agent 遵循的工作流
 SKILL.zh.md           同一技能的中文版
 AGENTS.md             非 Claude agent(Codex 等)的入口
+agents/openai.yaml     Codex 界面元数据
+.agents/skills/        项目级 Codex 技能入口
 references/           创意引擎
+  codex-supergrok.md    Codex ImageGen + SuperGrok 交付约定
   prompt-guide.md       画面/LOOK 层:提示词结构 + 词库 + 8 套主题预设
   beat-layer.md         14 种叙事弧线 + 钩子/节奏 + 镜头模式
   models-and-gotchas.md 每一个 API / ffmpeg 坑,都已填平
@@ -136,7 +153,7 @@ assets/               样片
 
 灵感来自 **[Stav Zilber](https://x.com/StavZilber)**、**[rom1trs](https://x.com/rom1trs)**、**[Higgsfield](https://x.com/higgsfield_ai)** 的拼贴广告工作流,以及 **[Vox](https://www.vox.com)** 的讲解片视觉语言。
 
-全流程基于 **[Atlas Cloud](https://www.atlascloud.ai/?utm_source=github&utm_campaign=vox_director)** 构建——一个提示词,一条成片。
+原始自动化 provider 基于 **[Atlas Cloud](https://www.atlascloud.ai/?utm_source=github&utm_campaign=vox_director)**。这个 fork 在保留该路径的同时增加了 Codex 原生流程。
 
 ## 许可
 

@@ -10,6 +10,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 CODEX_SKILL = ROOT / ".agents" / "skills" / "vox-director" / "SKILL.md"
+OPENAI_INTERFACE = ROOT / "agents" / "openai.yaml"
 REQUIRED_ROOT_PATHS = (
     ROOT / "SKILL.md",
     ROOT / "AGENTS.md",
@@ -36,6 +37,14 @@ def validate() -> list[str]:
         errors.append("Codex SKILL.md must declare a description")
     if "../../../SKILL.md" not in text:
         errors.append("Codex entry must route to the root SKILL.md single source of truth")
+
+    if not OPENAI_INTERFACE.is_file():
+        errors.append("missing Codex interface metadata: agents/openai.yaml")
+    else:
+        interface = OPENAI_INTERFACE.read_text(encoding="utf-8")
+        for field in ("display_name:", "short_description:", "default_prompt:"):
+            if field not in interface:
+                errors.append(f"agents/openai.yaml must declare {field[:-1]}")
 
     return errors
 

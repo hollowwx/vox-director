@@ -3,7 +3,7 @@
 Style bake-off: render ONE representative beat in several candidate collage styles so
 the user can pick the visual idiom before committing the whole film.
 
-Hybrid selection: Claude reads the topic and chooses which idioms to try (names from
+Hybrid selection: Codex reads the topic and chooses which idioms to try (names from
 styles.STYLE_LIBRARY, or a custom idiom string), matching the topic's era/culture/tone —
 don't default to Chinese motifs for a Western topic. Then the human picks by eye.
 
@@ -20,7 +20,7 @@ from provider import get_provider, run_jobs
 from styles import compose_collage_prompt, STYLE_LIBRARY, THEME_PRESETS, resolve_theme
 
 IMAGE_MODEL = "google/nano-banana-2/text-to-image"
-# candidates are THEME names (full look bundles); Claude picks topic-fitting ones
+# candidates are THEME names (full look bundles); Codex picks topic-fitting ones
 DEFAULT_CANDIDATES = ["american-retro", "swiss-modern", "punk-zine", "atomic-age"]
 
 

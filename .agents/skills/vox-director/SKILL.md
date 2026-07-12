@@ -2,9 +2,10 @@
 name: vox-director
 description: >
   Create a finished Vox-inspired paper-collage explainer or ad video from one
-  topic using the repository workflow, Atlas Cloud media generation, and local
-  ffmpeg assembly. Use for Vox-style explainers, motion collages, paper collage
-  ads, narrated scrapbook videos, and topic-to-video requests.
+  topic with Codex ImageGen, a SuperGrok/Grok Imagine handoff, local media
+  assets, and ffmpeg assembly; keep Atlas Cloud as an optional automation
+  fallback. Use for Vox-style explainers, motion collages, paper collage ads,
+  narrated scrapbook videos, and topic-to-video requests.
 ---
 
 # Vox Director for Codex
@@ -21,13 +22,15 @@ Before taking any production action:
 4. Run the root `scripts/` commands from the repository root so relative paths
    and `out/<project>/` remain consistent.
 
-Translate the authoritative workflow's shell examples to the current platform:
+Follow the root workflow's Codex-native route by default. Translate shell
+examples to the current platform:
 
-- On Windows PowerShell, use `$env:ATLASCLOUD_API_KEY`, `Get-Command`, and
-  `python` (or the configured workspace Python) instead of Bash `export`,
-  `command -v`, and `python3`.
+- On Windows PowerShell, use `python` (or the configured workspace Python).
 - On macOS/Linux, keep the documented Bash and `python3` commands.
-- Resolve `ffmpeg`, `ffprobe`, Python, and Pillow before generating media.
+- Run `scripts/doctor.py --json` before generating media.
+- Do not request an Atlas key unless the user explicitly selects Atlas.
+- Do not open Grok, control a browser, or upload media during handoff unless the
+  user separately asks for browser automation.
 
 Keep both human approval gates from the authoritative workflow. Do not call paid
 media-generation APIs before the beat-map and visual-style approvals are given.

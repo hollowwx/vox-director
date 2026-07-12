@@ -1,9 +1,10 @@
 ---
 name: vox-director
 description: >
-  Turn ONE topic into a finished Vox-style paper-collage explainer / ad video, end to end
-  on the Atlas Cloud API + local ffmpeg — script, collage keyframes, motion, voice-over,
-  music, captions, all automated. Use this whenever the user wants a "Vox style" video,
+  Turn ONE topic into a finished Vox-style paper-collage explainer / ad video with a
+  Codex-native workflow: Codex ImageGen keyframes, SuperGrok/Grok Imagine motion handoff,
+  local audio assets, and ffmpeg assembly. Atlas Cloud remains an optional automated
+  fallback. Use this whenever the user wants a "Vox style" video,
   a paper/torn-paper collage animation, a "motion collage", a narrated explainer or short
   ad built from AI-generated collage posters, a scrapbook-style tribute, or wants to turn
   a topic / product / person into a punchy narrated collage video — even if they don't say
@@ -17,7 +18,8 @@ description: >
 
 Turn a one-line topic into a finished **Vox-style paper-collage video**: a bold, punchy,
 narrated explainer/ad where each beat is a torn-paper collage poster that comes alive, with
-voice-over, music and captions. Runs on **one Atlas Cloud API key** + local **ffmpeg**.
+voice-over, music and captions. The default Codex route needs local **ffmpeg** and no Atlas
+key. Atlas remains available for optional provider-generated media.
 
 The look is the modern editorial paper-collage popularized by Vox explainers and creators
 like Stav Zilber / rom1trs: hand-cut paper cut-outs, torn edges, tape, halftone dots,
@@ -39,12 +41,20 @@ Everything hinges on the prompts. **Before writing any image or video prompt, re
 `references/prompt-guide.md`** — it has the exact prompt structures that make the difference
 between "a real Vox collage" and "a moving PowerPoint".
 
-## Prerequisites (check, don't skip)
+## Codex runtime contract
 
-- `echo "${ATLASCLOUD_API_KEY:+set}"` — if empty, tell the user to set it (get one at
-  https://www.atlascloud.ai/console/api-keys) and stop.
-- `command -v ffmpeg ffprobe` — required for assembly (`brew install ffmpeg` on macOS).
-- `python3 -c "import PIL"` — Pillow, for captions/watermark overlays.
+Run every command from the skill root. Use `python` on Windows PowerShell and usually `python3`
+on macOS/Linux. In the commands below, `<python>` means the interpreter available in the current
+environment.
+
+Before drafting or generating anything, run `<python> scripts/doctor.py --json`. This checks
+Python, Pillow, ffmpeg, ffprobe, and curl without network access or billable calls. Fix every
+missing required dependency before continuing. An absent Atlas key is allowed during planning
+and offline validation.
+
+Only when using the optional Atlas provider, run `<python> scripts/doctor.py --require-api-key`
+immediately before its first call. Codex ImageGen and SuperGrok do not require an Atlas key. Read
+`references/codex-supergrok.md` before running either stage.
 
 ## Standard workflow (topic → film)
 
@@ -69,19 +79,29 @@ This is the default, most-automated path. Every stage is one script, all driven 
    (medium/era/palette/type/finish) when none fit. Match the topic, **not** the language (an
    English film on Chinese history should look Chinese). A theme bundles the whole LOOK layer
    (idiom+palette+type+finish+mood+motion). Run a bake-off and let the user pick by eye — AI
-   proposes, the library is the quality floor, the human decides. Set the pick as `"theme"`:
-   `python3 scripts/style_bakeoff.py out/<project> american-retro,swiss-modern,punk-zine,atomic-age`
-   Set the chosen name as `"collage_style"` in beats.json (keyframes.py reads it).
+   proposes, the library is the quality floor, the human decides. Prepare Codex ImageGen tasks:
+   `<python> scripts/codex_media.py prepare out/<project> --stage bakeoff --styles
+   american-retro,swiss-modern,punk-zine,atomic-age`. Generate and record the candidates, show
+   them to the user, then persist the approved theme with `<python> scripts/codex_media.py
+   select-style out/<project> --theme <pick>`.
 
-3. **Keyframes (the collage look).** `python3 scripts/keyframes.py out/<project>`
-   Generates one collage poster per beat/shot with **google/nano-banana-2/text-to-image**,
-   headline text baked in. Compose prompts with the 5-part structure in
-   `references/prompt-guide.md`. Verify each poster looks like a *real layered collage*
-   before animating — re-roll cheap ($0.08) here rather than paying to animate a weak image.
+3. **Keyframes with Codex ImageGen (default).** Run
+   `<python> scripts/codex_media.py prepare out/<project> --stage keyframes`. For every `pending`
+   task in `codex-media.json`, call built-in ImageGen with its prompt, copy the selected PNG to
+   `output_path`, inspect it, and record it with `<python> scripts/codex_media.py record
+   out/<project> --stage keyframes --key <key> --output <path>`. Do not use the Image API CLI or
+   ask for `OPENAI_API_KEY` unless the user explicitly requests that fallback.
 
-4. **Motion.** `python3 scripts/clips.py out/<project>`
-   Animates each poster with **google/gemini-omni-flash/image-to-video**. Two independent axes
-   (see `references/beat-layer.md` §3, tested on our stack):
+4. **SuperGrok handoff pack (default).** Run
+   `<python> scripts/codex_media.py prepare out/<project> --stage supergrok`. Do not open Grok or
+   upload anything. Give the user each task's local `input_path` image together with its exact
+   prompt and duration, grouped by shot key. Render the reference images inline when possible and
+   keep the files in the project. The user performs image-to-video generation in SuperGrok.
+   Because Grok Imagine I2V has a 6-second minimum, two short A/B shots may be delivered as one
+   Multi-Image storyboard: upload A as `@image1`, B as `@image2`, then allocate the six seconds
+   explicitly (default 3s A + 1s transition + 2s B). Use this only when the images have a coherent
+   visual progression; retain separate single-image fallbacks for disruptive scene changes.
+   Motion prompts use two independent axes:
    • **`camera_move`** — ONE move per shot. Safe/default: `{static, push_in, pull_out, pan, tilt,
      parallax}`. **Bold/experimental** `{orbit, dolly_zoom, roll, whip}` are **available, not
      banned** — they can warp the flat art, so pair with `constraints: loose` and **re-roll**.
@@ -94,15 +114,18 @@ This is the default, most-automated path. Every stage is one script, all driven 
    = `strict` (default: defect guards on — flat-2D, one-way, no-morph; best for clean text-heavy
    explainers) or `loose` (let the model explore 3D/bold moves; re-roll the misses). **Headline
    text is hard-protected only on shots that have a title** (detail shots without a headline are
-   free to go wild). For **real people / brand logos**, Omni & Seedance refuse — set
-   `"video_model": "kwaivgi/kling-video-o3-pro/image-to-video"`.
+   free to go wild).
 
-5. **Voice + music.** `python3 scripts/audio.py out/<project>`
-   One consistent narrator via **xai/tts-v1** (multilingual, `voice_id`) + instrumental BGM
-   via **minimax/music-2.6**. (Do NOT use seed-audio for plain narration unless you pin a
-   speaker — see gotchas.)
+   **Atlas fallback:** run `<python> scripts/keyframes.py out/<project>` and
+   `<python> scripts/clips.py out/<project>` only when the user explicitly selects Atlas and has
+   configured `ATLASCLOUD_API_KEY`.
 
-6. **Assemble.** `python3 scripts/assemble.py out/<project>`
+5. **Voice + music.** The Codex-native route accepts local assets: one narration file per beat
+   recorded as `narration_audio`, plus project-level `bgm_path`. Help the user prepare or import
+   them, but do not invent a cloud provider or request a key. If the user explicitly selects
+   Atlas, run `<python> scripts/audio.py out/<project>` for provider-generated narration and BGM.
+
+6. **Assemble.** `<python> scripts/assemble.py out/<project>`
    ffmpeg: normalize + concat all shots, lay the single narration ducked under the music,
    burn captions timed per beat, add the watermark. Output `out/<project>/final.mp4`.
 
@@ -134,7 +157,7 @@ Add a `shots` array to each beat (see schema). Give each shot its own short `sce
   "project": "my-film", "topic": "...", "language": "en",
   "aspect": "9:16",                       // 16:9 | 9:16 | 1:1 | 3:4
   "style": "collage",
-  "provider": "atlas_cloud",              // media backend — default; pluggable (scripts/provider.py)
+  "provider": "codex",                    // codex | atlas_cloud
   "theme": "american-retro",              // THEME_PRESET (styles.THEME_PRESETS) — the LOOK layer
   "arc": "timeline",                      // narrative arc (beat-layer.md) — the STORY skeleton
   "video_model": "google/gemini-omni-flash/image-to-video",  // Kling for real people
@@ -143,7 +166,7 @@ Add a `shots` array to each beat (see schema). Give each shot its own short `sce
   "voice": {"voice_id": "leo", "language": "en", "speed": 1.0},
   "music": "epic cinematic orchestral, instrumental, no vocals",
   "mix": {"music": 0.6, "voice": 1.25},   // audio balance — optional; these are the defaults (BGM ducks under the VO)
-  "watermark": "Made with Atlas Cloud",
+  "watermark": "vox-director",
   "beats": [
     {
       "id": 1, "title_cn": "", "title_en": "BEFORE MONEY",
@@ -184,10 +207,10 @@ See `references/models-and-gotchas.md` for the full model-choice reasoning and e
 API / ffmpeg gotcha (auth header, curl downloads, no-libass captions, content blocks, etc.).
 Read it before debugging any failure — most failures are already documented there.
 
-**Backends are pluggable.** Every API call goes through a **provider** (`scripts/provider.py`);
-Atlas Cloud is the default and only backend today. Set `"provider"` in beats.json to route to a
-different backend once one is added — the stage scripts don't change. `scripts/provider.py`'s
-`run_jobs()` also does the submit/poll with **auto-resubmit on a stalled or failed job**.
+**Media routes are explicit.** `"provider": "codex"` uses `scripts/codex_media.py` to build
+resumable manifests for built-in ImageGen and the manual SuperGrok handoff. `"provider":
+"atlas_cloud"` uses the legacy provider scripts for automated submit/poll/download and requires
+`ATLASCLOUD_API_KEY`. Never silently switch routes or incur provider cost.
 
 ## Advanced: element-level motion collage
 
@@ -204,7 +227,8 @@ frame reconstructs the original poster.
 
 ## Editions
 
-- **Auto edition** (this skill): topic in, film out, all on Atlas.
-- **Manual prompt-pack**: if the user isn't on Atlas, just produce the beat map + the per-beat
-  image prompts + the per-clip motion prompts + the narration script for them to paste into
-  any generator. The creative engine (the prompts) is identical.
+- **Codex-native (default):** ImageGen keyframes, SuperGrok handoff, local audio, and ffmpeg
+  assembly. This resumable route requires no Atlas key.
+- **Atlas automation (optional):** provider-generated keyframes, clips, voice, and music when the
+  user explicitly selects Atlas and supplies `ATLASCLOUD_API_KEY`.
+- **Prompt pack:** beat map plus image, motion, and narration prompts for any external generator.
